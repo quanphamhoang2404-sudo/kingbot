@@ -1,0 +1,39 @@
+const mineflayer = require('mineflayer');
+
+// Cấu hình kết nối thẳng tới server kingmc.vn phiên bản 1.21.1
+const bot = mineflayer.createBot({
+  host: 'kingmc.vn',       // Server của bạn
+  port: 25565,             // Cổng mặc định
+  username: 'KingBot_AFK', // Tên bot hiển thị trong game (Bạn có thể đổi tùy ý)
+  version: '1.21.1'        // Phiên bản Minecraft để chạy bot ổn định
+});
+
+// Khi bot kết nối vào server thành công
+bot.on('spawn', () => {
+  console.log(`[BOT] ${bot.username} đã kết nối vào kingmc.vn thành công!`);
+  
+  // Bạn có thể cài đặt tự động gõ mật khẩu tại đây nếu server yêu cầu đăng ký/đăng nhập
+  // Hãy xóa dấu "//" ở đầu 2 dòng dưới đây và sửa lại mật khẩu "matkhaucua bạn" nếu cần:
+  // setTimeout(() => { bot.chat('/login matkhaucua_ban'); }, 2000);
+  
+  // Hành động chống AFK: Cứ mỗi 30 giây bot tự nhảy một lần để không bị kick
+  setInterval(() => {
+    bot.setControlState('jump', true);
+    setTimeout(() => {
+      bot.setControlState('jump', false);
+    }, 500);
+  }, 30000);
+});
+
+// Tự động kết nối lại nếu server restart hoặc bị kick ra ngoài
+bot.on('end', (reason) => {
+  console.log(`[BOT] Bị ngắt kết nối do: ${reason}. Đang thử kết nối lại sau 10 giây...`);
+  setTimeout(() => {
+    process.exit(1); 
+  }, 10000);
+});
+
+// Tránh lỗi crash ứng dụng đột ngột
+bot.on('error', (err) => {
+  console.error('[LỖI HỆ THỐNG]:', err);
+});
