@@ -1,0 +1,10 @@
+{
+    "App": {
+        "Webhook": ""
+    },
+    "Accounts": {},
+    "CurrentAccounts": [],
+    "Chat": false,
+    "IgnoreError": true,
+    "AntiAFK": true
+}
