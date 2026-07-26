@@ -8,6 +8,7 @@ const mineflayer = require('mineflayer');
 const http = require('http');
 const readline = require("readline");
 const fs = require('fs');
+const { exec } = require('child_process');
 
 process.on('uncaughtException', (err) => {
     if (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT' || err.message.includes('ECONNRESET')) return;
@@ -28,7 +29,9 @@ if (!config.Accounts) config.Accounts = {};
 if (!config.CurrentAccounts) config.CurrentAccounts = [];
 if (config.Chat === undefined) config.Chat = false;
 if (config.IgnoreError === undefined) config.IgnoreError = true;
-if (config.AntiAFK === undefined) config.AntiAFK = true;
+
+// Anti-AFK luôn bật
+config.AntiAFK = true;
 
 let CurrentTab = "Home";
 let running = true;
@@ -83,9 +86,19 @@ function resolveText(raw) {
     return text.replace(/§[0-9a-fk-or]/gi, '').trim();
 }
 
+function copyToClipboard(text) {
+    return new Promise((resolve, reject) => {
+        const child = exec('clip');
+        child.stdin.write(text);
+        child.stdin.end();
+        child.on('exit', () => resolve());
+        child.on('error', reject);
+    });
+}
+
 function render_logo() {
     console.log(`
-\x1b[92m═══════════════════════════════════════════════════════\x1b[0m
+\x1b[37m═══════════════════════════════════════════════════════\x1b[0m
 \x1b[1m\x1b[36m     █████╗ ███████╗██╗  ██╗    ██████╗ ██████╗  ██████╗ 
     ██╔══██╗██╔════╝██║ ██╔╝    ██╔══██╗██╔══██╗██╔═══██╗
     ███████║█████╗  █████╔╝     ██████╔╝██████╔╝██║   ██║
@@ -93,8 +106,8 @@ function render_logo() {
     ██║  ██║██║     ██║  ██╗    ██║     ██║  ██║╚██████╔╝
     ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝    ╚═╝     ╚═╝  ╚═╝ ╚═════╝ \x1b[0m
 \x1b[94m              Multi Account AFK System\x1b[0m
-\x1b[90m                 created by @tin244\x1b[0m
-\x1b[92m═══════════════════════════════════════════════════════\x1b[0m
+\x1b[90m                 created by @dkhanh\x1b[0m
+\x1b[37m═══════════════════════════════════════════════════════\x1b[0m
 `);
 }
 
@@ -111,7 +124,7 @@ function Render() {
         } else {
             accountKeys.forEach((acc, index) => {
                 const isProxy = config.Accounts[acc].proxy?.enable;
-                console.log(`  [\x1b[36m${index + 1}\x1b[0m] \x1b[32m${acc}\x1b[0m ${isProxy ? '\x1b[35m(Proxy)\x1b[0m' : ''}`);
+                console.log(`  [\x1b[36m${index + 1}\x1b[0m] \x1b[37m${acc}\x1b[0m ${isProxy ? '\x1b[35m(Proxy)\x1b[0m' : ''}`);
             });
         }
 
@@ -121,36 +134,39 @@ function Render() {
         } else {
             selectedAccounts.forEach((acc, index) => {
                 const isProxy = config.Accounts[acc].proxy?.enable;
-                console.log(`  [\x1b[36m${index + 1}\x1b[0m] \x1b[4m\x1b[32m${acc}\x1b[0m ${isProxy ? '\x1b[35m(Proxy)\x1b[0m' : ''}`);
+                console.log(`  [\x1b[36m${index + 1}\x1b[0m] \x1b[4m\x1b[37m${acc}\x1b[0m ${isProxy ? '\x1b[35m(Proxy)\x1b[0m' : ''}`);
             });
         }
 
         console.log(`\n\x1b[90m───────────────────────────────────────────────────────\x1b[0m`);
-        console.log(`  \x1b[92mRun\x1b[0m          → Chạy toàn bộ bot đã chọn`);
-        console.log(`  \x1b[92mAcc <tên/số>\x1b[0m → Thêm / xóa bot khỏi danh sách treo`);
-        console.log(`  \x1b[92mSetting\x1b[0m      → Quản lý tài khoản & proxy`);
-        console.log(`  \x1b[92mHelp\x1b[0m         → Xem hướng dẫn đầy đủ`);
-        console.log(`  \x1b[92mExit\x1b[0m         → Thoát chương trình`);
+        console.log(`  \x1b[37mRun\x1b[0m            → Chạy toàn bộ bot đã chọn`);
+        console.log(`  \x1b[37mAcc <tên/số>\x1b[0m   → Thêm / xóa bot khỏi danh sách treo`);
+        console.log(`  \x1b[37mCopy\x1b[0m           → Sao chép tài khoản đang chọn`);
+        console.log(`  \x1b[37mCopy all\x1b[0m       → Sao chép tất cả tài khoản`);
+        console.log(`  \x1b[37mCopy webhook\x1b[0m   → Sao chép link Webhook`);
+        console.log(`  \x1b[37mCopy install\x1b[0m   → Sao chép lệnh cài đặt`);
+        console.log(`  \x1b[37mSetting\x1b[0m        → Quản lý tài khoản & proxy`);
+        console.log(`  \x1b[37mHelp\x1b[0m           → Xem hướng dẫn đầy đủ`);
+        console.log(`  \x1b[37mExit\x1b[0m           → Thoát chương trình`);
     }
     else if (CurrentTab === "Setting") {
         console.log(`\x1b[33m▸ Danh sách tài khoản (${accountKeys.length}):\x1b[0m`);
         accountKeys.forEach((acc, index) => {
             const isProxy = config.Accounts[acc].proxy?.enable;
-            console.log(`  [\x1b[36m${index + 1}\x1b[0m] \x1b[32m${acc}\x1b[0m ${isProxy ? '\x1b[35m(Proxy)\x1b[0m' : ''}`);
+            console.log(`  [\x1b[36m${index + 1}\x1b[0m] \x1b[37m${acc}\x1b[0m ${isProxy ? '\x1b[35m(Proxy)\x1b[0m' : ''}`);
         });
 
-        const webhookStatus = config.App.Webhook ? "\x1b[32mOnline\x1b[0m" : "\x1b[31mOffline\x1b[0m";
+        const webhookStatus = config.App.Webhook ? "\x1b[37mOnline\x1b[0m" : "\x1b[31mOffline\x1b[0m";
         console.log(`\n▸ Webhook: [${webhookStatus}] \x1b[34m${config.App.Webhook || "Trống"}\x1b[0m`);
-        console.log(`▸ Anti-AFK: ${config.AntiAFK ? "\x1b[32mBật\x1b[0m" : "\x1b[31mTắt\x1b[0m"}`);
+        console.log(`▸ Anti-AFK: \x1b[37mLuôn Bật\x1b[0m`);
 
         console.log(`\n\x1b[90m───────────────────────────────────────────────────────\x1b[0m`);
-        console.log(`  \x1b[92mAdd <user> <pass>\x1b[0m     → Thêm tài khoản`);
-        console.log(`  \x1b[92mDel <user/số>\x1b[0m         → Xóa tài khoản`);
-        console.log(`  \x1b[92mProxy <user> ON/OFF\x1b[0m   → Bật/tắt proxy`);
-        console.log(`  \x1b[92mProxy <user> IP:PORT\x1b[0m  → Gán proxy`);
-        console.log(`  \x1b[92mWebhook <url>\x1b[0m         → Thêm Discord webhook`);
-        console.log(`  \x1b[92mAntiafk on/off\x1b[0m       → Bật/tắt Anti-AFK toàn cục`);
-        console.log(`  \x1b[92mHome\x1b[0m                  → Quay lại menu chính`);
+        console.log(`  \x1b[37mAdd <user> <pass>\x1b[0m     → Thêm tài khoản`);
+        console.log(`  \x1b[37mDel <user/số>\x1b[0m         → Xóa tài khoản`);
+        console.log(`  \x1b[37mProxy <user> ON/OFF\x1b[0m   → Bật/tắt proxy`);
+        console.log(`  \x1b[37mProxy <user> IP:PORT\x1b[0m  → Gán proxy`);
+        console.log(`  \x1b[37mWebhook <url>\x1b[0m         → Thêm Discord webhook`);
+        console.log(`  \x1b[37mHome\x1b[0m                  → Quay lại menu chính`);
     }
     else if (CurrentTab === "Help") {
         console.log(`\x1b[33m▸ Danh sách lệnh:\x1b[0m\n`);
@@ -164,12 +180,15 @@ function Render() {
         console.log(`  Proxy <username/index> <IP:PORT>`);
         console.log(`  Proxy <username/index> <IP> <PORT>`);
         console.log(`  Webhook <url>`);
-        console.log(`  Antiafk on/off`);
+        console.log(`  Copy`);
+        console.log(`  Copy all`);
+        console.log(`  Copy webhook`);
+        console.log(`  Copy install`);
         console.log(`  Setting`);
         console.log(`  Home`);
         console.log(`  Exit`);
         console.log(`\n\x1b[90m───────────────────────────────────────────────────────\x1b[0m`);
-        console.log(`  Nhập \x1b[92mHome\x1b[0m để quay lại menu chính`);
+        console.log(`  Nhập \x1b[37mHome\x1b[0m để quay lại menu chính`);
     }
 
     if (lastError) {
@@ -213,14 +232,9 @@ function maskIp(ip) {
 
 // ==================== ANTI-AFK ENGINE ====================
 function startAntiAFK(bot, username) {
-    if (!config.AntiAFK) return;
-
-    const log = (...args) => console.log(`[\x1b[32m${username}\x1b[0m]:`, ...args);
-
-    // Random interval helper
+    const log = (...args) => console.log(`[\x1b[37m${username}\x1b[0m]:`, ...args);
     const random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-    // Look around
     const lookAround = () => {
         if (!bot.entity) return;
         const yaw = bot.entity.yaw + (Math.random() * 1.2 - 0.6);
@@ -228,7 +242,6 @@ function startAntiAFK(bot, username) {
         bot.look(yaw, pitch, true);
     };
 
-    // Small movement
     const randomMove = () => {
         if (!bot.entity) return;
         const directions = ['forward', 'back', 'left', 'right'];
@@ -237,7 +250,6 @@ function startAntiAFK(bot, username) {
         setTimeout(() => bot.setControlState(dir, false), random(400, 1200));
     };
 
-    // Jump or sneak
     const jumpOrSneak = () => {
         if (!bot.entity) return;
         if (Math.random() > 0.5) {
@@ -249,14 +261,12 @@ function startAntiAFK(bot, username) {
         }
     };
 
-    // Swing arm
     const swing = () => {
         if (bot.entity) bot.swingArm('right');
     };
 
-    // Main loop - không theo chu kỳ cố định
     const scheduleNext = () => {
-        const delay = random(18000, 45000); // 18-45 giây
+        const delay = random(18000, 45000);
         setTimeout(() => {
             if (!bot.entity || bot._client.ended) return;
 
@@ -266,7 +276,6 @@ function startAntiAFK(bot, username) {
             else if (action <= 9) jumpOrSneak();
             else swing();
 
-            // Thỉnh thoảng kết hợp 2 hành động
             if (Math.random() > 0.7) {
                 setTimeout(() => {
                     if (Math.random() > 0.5) lookAround();
@@ -278,7 +287,6 @@ function startAntiAFK(bot, username) {
         }, delay);
     };
 
-    // Bắt đầu sau khi vào AFK zone
     setTimeout(() => {
         log(`\x1b[36m🛡️ Anti-AFK Engine đã kích hoạt\x1b[0m`);
         scheduleNext();
@@ -301,7 +309,7 @@ function startBot(username, accountConfig) {
     const pass = accountConfig.pass;
     const proxyConfig = accountConfig.proxy;
 
-    const log = (...args) => console.log(`[\x1b[32m${username}\x1b[0m]:`, ...args);
+    const log = (...args) => console.log(`[\x1b[37m${username}\x1b[0m]:`, ...args);
     const logErr = (...args) => {
         if (!config.IgnoreError) console.error(`❌ [\x1b[31m${username}\x1b[0m]:`, ...args);
     };
@@ -538,7 +546,6 @@ function startBot(username, accountConfig) {
         }
         if (plainText.toLowerCase().includes('afk')) {
             log(`\x1b[36m✔️ Đã vào khu vực AFK thành công\x1b[0m`);
-            // Kích hoạt Anti-AFK ngay sau khi vào zone
             startAntiAFK(bot, username);
         }
         if (plainText.includes("có tài khoảng cùng ip của ban") || plainText.includes("cùng ip")) {
@@ -628,22 +635,6 @@ async function handleCommand(input) {
             saveConfig();
         }
     }
-    else if (command === 'antiafk') {
-        if (!args[1]) {
-            lastError = "Cú pháp: Antiafk on/off";
-        } else {
-            const state = args[1].toLowerCase();
-            if (state === 'on') {
-                config.AntiAFK = true;
-                saveConfig();
-            } else if (state === 'off') {
-                config.AntiAFK = false;
-                saveConfig();
-            } else {
-                lastError = "Chỉ nhận on hoặc off";
-            }
-        }
-    }
     else if (command === 'proxy') {
         if (!args[1] || !args[2]) {
             lastError = "Cú pháp: Proxy <user> ON/OFF/IP:PORT";
@@ -682,6 +673,44 @@ async function handleCommand(input) {
             }
         }
     }
+    else if (command === 'copy') {
+        const type = (args[1] || '').toLowerCase();
+
+        if (type === 'all') {
+            const list = Object.keys(config.Accounts);
+            if (list.length === 0) {
+                lastError = "Chưa có tài khoản nào để copy!";
+            } else {
+                await copyToClipboard(list.join('\n'));
+                console.log(`\n\x1b[37m✔ Đã copy ${list.length} tài khoản vào clipboard!\x1b[0m`);
+                await new Promise(r => setTimeout(r, 1300));
+            }
+        }
+        else if (type === 'webhook') {
+            if (!config.App.Webhook) {
+                lastError = "Chưa có Webhook để copy!";
+            } else {
+                await copyToClipboard(config.App.Webhook);
+                console.log(`\n\x1b[37m✔ Đã copy Webhook vào clipboard!\x1b[0m`);
+                await new Promise(r => setTimeout(r, 1300));
+            }
+        }
+        else if (type === 'install') {
+            const installCmd = `curl -o install.bat https://raw.githubusercontent.com/quanphamhoang2404-sudo/kingbot/refs/heads/main/install.bat && install.bat`;
+            await copyToClipboard(installCmd);
+            console.log(`\n\x1b[37m✔ Đã copy lệnh cài đặt vào clipboard!\x1b[0m`);
+            await new Promise(r => setTimeout(r, 1300));
+        }
+        else {
+            if (selectedAccounts.length === 0) {
+                lastError = "Chưa chọn tài khoản nào để copy! Dùng lệnh Acc trước.";
+            } else {
+                await copyToClipboard(selectedAccounts.join('\n'));
+                console.log(`\n\x1b[37m✔ Đã copy ${selectedAccounts.length} tài khoản đang chọn vào clipboard!\x1b[0m`);
+                await new Promise(r => setTimeout(r, 1300));
+            }
+        }
+    }
     else if (command === 'run') {
         if (selectedAccounts.length === 0) {
             lastError = "Chưa chọn tài khoản nào! Dùng lệnh Acc trước.";
@@ -694,7 +723,7 @@ async function handleCommand(input) {
 
             selectedAccounts.forEach(acc => {
                 const accConfig = config.Accounts[acc];
-                console.log(`→ Starting: \x1b[32m${acc}\x1b[0m | Proxy: ${accConfig.proxy?.enable ? accConfig.proxy.ip : "Không"}`);
+                console.log(`→ Starting: \x1b[37m${acc}\x1b[0m | Proxy: ${accConfig.proxy?.enable ? accConfig.proxy.ip : "Không"}`);
                 startBot(acc, accConfig);
             });
 
