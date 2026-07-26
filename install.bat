@@ -19,7 +19,6 @@ echo.
 echo  [37m[1/4][0m Dang kiem tra moi truong...
 timeout /t 1 >nul
 
-:: Kiểm tra Node.js
 where node >nul 2>&1
 if %errorlevel% neq 0 (
     echo  [91m[LOI][0m Ban chua cai Node.js!
@@ -28,7 +27,6 @@ if %errorlevel% neq 0 (
     pause
     exit /b
 )
-
 echo  [37m[OK][0m Da co Node.js
 echo.
 
@@ -41,14 +39,20 @@ if %errorlevel% neq 0 (
 )
 echo  [37m[OK][0m Tai kingbot.js thanh cong
 
-echo  [37m[3/4][0m Dang tai app.json...
-curl -s -o app.json https://raw.githubusercontent.com/quanphamhoang2404-sudo/kingbot/refs/heads/main/app.json
-if %errorlevel% neq 0 (
-    echo  [91m[LOI][0m Khong the tai app.json
-    pause
-    exit /b
+echo  [37m[3/4][0m Kiem tra app.json...
+
+if exist app.json (
+    echo  [37m[OK][0m Da co app.json → giữ nguyên dữ liệu (không ghi đè)
+) else (
+    echo  [37m[!][0m Chua co app.json → dang tai file mau...
+    curl -s -o app.json https://raw.githubusercontent.com/quanphamhoang2404-sudo/kingbot/refs/heads/main/app.json
+    if %errorlevel% neq 0 (
+        echo  [91m[LOI][0m Khong the tai app.json
+        pause
+        exit /b
+    )
+    echo  [37m[OK][0m Tai app.json mau thanh cong
 )
-echo  [37m[OK][0m Tai app.json thanh cong
 echo.
 
 echo  [37m[4/4][0m Dang cai dat module mineflayer...
@@ -62,12 +66,15 @@ echo  [37m[OK][0m Cai dat module thanh cong
 echo.
 
 echo  [37m═══════════════════════════════════════════════════════[0m
-echo  [37m          CAI DAT HOAN TAT THANH CONG![0m
+echo  [37m          CAI DAT / UPDATE HOAN TAT![0m
 echo  [37m═══════════════════════════════════════════════════════[0m
 echo.
-echo  [37mDe chay bot, hay nhap lenh:[0m
+echo  [37m• kingbot.js đã được cập nhật[0m
+echo  [37m• app.json được giữ nguyên (không mất acc)[0m
+echo.
+echo  [37mChay bot bang lenh:[0m
 echo.
 echo      [37mnode kingbot.js[0m
 echo.
-echo  [90mNhan phim bat ky de dong cua so...[0m
+echo  [90mNhan phim bat ky de dong...[0m
 pause >nul
