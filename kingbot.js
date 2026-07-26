@@ -194,7 +194,7 @@ function render_logo() {
     ██║  ██║██║     ██║  ██╗    ██║     ██║  ██║╚██████╔╝
     ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝    ╚═╝     ╚═╝  ╚═╝ ╚═════╝ \x1b[0m
 \x1b[94m              Multi Account AFK System\x1b[0m
-\x1b[90m                 created by @qU4n\x1b[0m
+\x1b[90m                 created by @dkhanh\x1b[0m
 \x1b[37m═══════════════════════════════════════════════════════\x1b[0m
 `);
 }
@@ -350,7 +350,7 @@ function startAntiAFK(bot, username) {
     const scheduleNext = () => {
         const delay = random(18000, 45000);
         setTimeout(() => {
-            if (!bot.entity || bot._client.ended) return;
+            if (!bot.entity || bot._client?.ended) return;
 
             const action = random(1, 10);
             if (action <= 4) randomMove();
@@ -421,7 +421,7 @@ function startBot(username, accountConfig) {
 
             const req = http.request(reqOptions);
 
-            req.on('connect', (res, socket, head) => {
+            req.on('connect', (res, socket) => {
                 socket.on('error', (err) => logErr(`Lỗi Socket Proxy: ${err.message}`));
 
                 if (res.statusCode !== 200) {
@@ -779,6 +779,10 @@ async function handleCommand(input) {
                 startBot(acc, accConfig);
             });
 
+            // Giữ process sống
+            process.stdin.resume();
+            setInterval(() => {}, 1 << 30);
+
             return "START_BOTS";
         }
     }
@@ -796,6 +800,7 @@ async function main() {
 
         if (status === "START_BOTS") {
             rl.close();
+            // Không return để process tiếp tục chạy
             return;
         }
     }
