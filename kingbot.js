@@ -82,10 +82,12 @@ function resolveText(raw) {
     return text.replace(/§[0-9a-fk-or]/gi, '').trim();
 }
 
+// ==================== PROXY PARSER MẠNH ====================
 function parseProxyInput(input) {
     if (!input) return null;
     input = input.trim().replace(/^https?:\/\//i, '');
 
+    // user:pass@ip:port
     let match = input.match(/^([^:@\s]+):([^@\s]+)@([\d.]+):(\d+)$/);
     if (match) {
         return {
@@ -97,6 +99,7 @@ function parseProxyInput(input) {
         };
     }
 
+    // ip:port:user:pass
     match = input.match(/^([\d.]+):(\d+):([^:]+):(.+)$/);
     if (match) {
         return {
@@ -108,6 +111,7 @@ function parseProxyInput(input) {
         };
     }
 
+    // ip:port
     match = input.match(/^([\d.]+):(\d+)$/);
     if (match) {
         return {
@@ -117,6 +121,7 @@ function parseProxyInput(input) {
         };
     }
 
+    // ip port
     match = input.match(/^([\d.]+)\s+(\d+)$/);
     if (match) {
         return {
@@ -126,6 +131,7 @@ function parseProxyInput(input) {
         };
     }
 
+    // ip port user pass
     match = input.match(/^([\d.]+)\s+(\d+)\s+(\S+)\s+(.+)$/);
     if (match) {
         return {
@@ -140,6 +146,7 @@ function parseProxyInput(input) {
     return null;
 }
 
+// ==================== BULK ADD ====================
 function parseBulkAccountLine(line) {
     line = line.trim();
     if (!line || line.toLowerCase() === 'done') return null;
@@ -322,6 +329,7 @@ function maskIp(ip) {
     return ip;
 }
 
+// ==================== ANTI-AFK ENGINE ====================
 function startAntiAFK(bot, username) {
     const log = (...args) => console.log(`[\x1b[37m${username}\x1b[0m]:`, ...args);
     const random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -384,6 +392,7 @@ function startAntiAFK(bot, username) {
     }, 8000);
 }
 
+// ==================== BOT CORE ====================
 function startBot(username, accountConfig) {
     let isverified = false;
     let inkingsmp = false;
@@ -428,12 +437,6 @@ function startBot(username, accountConfig) {
             }
 
             const req = http.request(reqOptions);
-
-            req.setTimeout(15000, () => {
-                req.destroy();
-                logErr('Proxy timeout (15s) - Proxy không phản hồi');
-                sendDiscordWebhook(username, "❌ Proxy Timeout", `Proxy: \`${maskIp(proxyConfig.ip)}\` không phản hồi sau 15 giây`);
-            });
 
             req.on('connect', (res, socket) => {
                 socket.on('error', (err) => logErr(`Lỗi Socket Proxy: ${err.message}`));
@@ -541,12 +544,10 @@ function startBot(username, accountConfig) {
 
     bot.once('login', () => {
         if (hasEnded) return;
-        log('Đã kết nối, đang chờ server yêu cầu đăng nhập...');
-        
         setTimeout(() => {
             if (hasEnded || hasSentAuth) return;
             sendAuthCommand('/dn ' + pass);
-        }, 1500);
+        }, 1000);
     });
 
     bot.on('windowOpen', async (window) => {
@@ -630,45 +631,16 @@ function startBot(username, accountConfig) {
 
     bot.on('message', (jsonMsg) => {
         if (hasEnded) return;
-        const plainText = jsonMsg.toString().toLowerCase();
+        const plainText = jsonMsg.toString();
 
-        if (config.Chat) log(`[CHAT]: ${jsonMsg.toString()}`);
+        if (config.Chat) log(`[CHAT]: ${plainText}`);
 
-        // Hệ thống đăng nhập tự động
-        if (
-            plainText.includes('ký với lệnh') ||
-            plainText.includes('hãy đăng kí') ||
-            plainText.includes('đăng ký') ||
-            plainText.includes('/dk') ||
-            plainText.includes('register')
-        ) {
-            log('Phát hiện yêu cầu ĐĂNG KÝ → gửi /dk');
-            setTimeout(() => {
-                if (!hasEnded) bot.chat('/dk ' + pass);
-            }, 800);
+        if (plainText.includes('ký với lệnh') || plainText.includes('hãy đăng kí')) {
+            bot.chat('/dk ' + pass);
         }
-
-        if (
-            plainText.includes('đăng nhập') ||
-            plainText.includes('/dn') ||
-            plainText.includes('login') ||
-            plainText.includes('nhập mật khẩu')
-        ) {
-            log('Phát hiện yêu cầu ĐĂNG NHẬP → gửi /dn');
-            setTimeout(() => {
-                if (!hasEnded) bot.chat('/dn ' + pass);
-            }, 800);
-        }
-
-        if (
-            plainText.includes('đăng nhập thành công') ||
-            plainText.includes('login successful') ||
-            plainText.includes('đã đăng nhập')
-        ) {
+        if (plainText.includes('Đăng nhập thành công')) {
             isverified = true;
-            log('\x1b[36m✔ Đăng nhập thành công!\x1b[0m');
         }
-
         if (plainText.includes('giây rồi mới mở menu')) {
             log("⚠️ Bị limit mở menu. Chờ 5s...");
             if (retryMenuTimer) clearTimeout(retryMenuTimer);
@@ -678,17 +650,14 @@ function startBot(username, accountConfig) {
                 selectServer();
             }, 5000);
         }
-
-        if (plainText.includes('afk')) {
+        if (plainText.toLowerCase().includes('afk')) {
             log(`\x1b[36m✔️ Đã vào khu vực AFK thành công\x1b[0m`);
             startAntiAFK(bot, username);
         }
-
         if (plainText.includes("có tài khoảng cùng ip của ban") || plainText.includes("cùng ip")) {
             logErr("⚠️ Phát hiện trùng IP (hãy đổi Proxy)");
             sendDiscordWebhook(username, "⚠️ Trùng IP", "Đã có tài khoản khác chạy cùng IP");
         }
-
         if (plainText.includes('chưa liên kết')) {
             sendDiscordWebhook(username, "Chưa liên kết Discord", "Bị limit Shard");
         }
@@ -699,6 +668,7 @@ function startBot(username, accountConfig) {
     });
 }
 
+// ==================== COMMAND HANDLER ====================
 async function handleCommand(input) {
     const args = input.trim().split(" ").filter(Boolean);
     if (args.length === 0) return null;
@@ -826,6 +796,7 @@ async function handleCommand(input) {
                 startBot(acc, accConfig);
             });
 
+            // Giữ process sống
             process.stdin.resume();
             setInterval(() => {}, 1 << 30);
 
