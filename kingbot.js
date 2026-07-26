@@ -96,6 +96,105 @@ function copyToClipboard(text) {
     });
 }
 
+// ==================== PROXY PARSER THÔNG MINH ====================
+function parseProxyInput(input) {
+    if (!input) return null;
+    input = input.trim();
+
+    // user:pass@ip:port
+    const authMatch = input.match(/^([^:@\s]+):([^@\s]+)@([\d.]+):(\d+)$/);
+    if (authMatch) {
+        return {
+            enable: true,
+            ip: authMatch[3],
+            port: parseInt(authMatch[4]),
+            username: authMatch[1],
+            password: authMatch[2]
+        };
+    }
+
+    // ip:port
+    const colonMatch = input.match(/^([\d.]+):(\d+)$/);
+    if (colonMatch) {
+        return {
+            enable: true,
+            ip: colonMatch[1],
+            port: parseInt(colonMatch[2])
+        };
+    }
+
+    // ip port
+    const spaceMatch = input.match(/^([\d.]+)\s+(\d+)$/);
+    if (spaceMatch) {
+        return {
+            enable: true,
+            ip: spaceMatch[1],
+            port: parseInt(spaceMatch[2])
+        };
+    }
+
+    return null;
+}
+
+// ==================== BULK ADD ====================
+function parseBulkAccountLine(line) {
+    line = line.trim();
+    if (!line || line.toLowerCase() === 'done') return null;
+
+    // user:pass
+    if (line.includes(':')) {
+        const [user, ...passParts] = line.split(':');
+        const pass = passParts.join(':').trim();
+        if (user && pass) return { username: user.trim(), pass };
+    }
+
+    // user pass
+    const parts = line.split(/\s+/);
+    if (parts.length >= 2) {
+        return { username: parts[0], pass: parts.slice(1).join(' ') };
+    }
+
+    return null;
+}
+
+async function handleBulkAdd() {
+    console.log(`\n\x1b[37m▸ Chế độ Bulk Add\x1b[0m`);
+    console.log(`\x1b[90mDán nhiều tài khoản (mỗi dòng 1 acc). Gõ dòng trống hoặc "done" để kết thúc.\x1b[0m`);
+    console.log(`\x1b[90mĐịnh dạng hỗ trợ: user:pass  hoặc  user pass\x1b[0m\n`);
+
+    let added = 0;
+    let skipped = 0;
+
+    while (true) {
+        const line = await askQuestion("\x1b[37m>\x1b[0m ");
+        if (!line.trim() || line.trim().toLowerCase() === 'done') break;
+
+        const parsed = parseBulkAccountLine(line);
+        if (!parsed) {
+            console.log(`\x1b[31m  ✗ Bỏ qua dòng không hợp lệ\x1b[0m`);
+            skipped++;
+            continue;
+        }
+
+        if (config.Accounts[parsed.username]) {
+            console.log(`\x1b[33m  ⚠ ${parsed.username} đã tồn tại → bỏ qua\x1b[0m`);
+            skipped++;
+            continue;
+        }
+
+        config.Accounts[parsed.username] = {
+            pass: parsed.pass,
+            proxy: { enable: false, ip: "", port: 0 }
+        };
+        console.log(`\x1b[37m  ✔ Đã thêm: ${parsed.username}\x1b[0m`);
+        added++;
+    }
+
+    if (added > 0) saveConfig();
+    console.log(`\n\x1b[37m→ Hoàn tất: Thêm ${added} acc, bỏ qua ${skipped} dòng\x1b[0m`);
+    await new Promise(r => setTimeout(r, 1500));
+}
+
 function render_logo() {
     console.log(`
 \x1b[37m═══════════════════════════════════════════════════════\x1b[0m
@@ -141,6 +240,7 @@ function Render() {
         console.log(`\n\x1b[90m───────────────────────────────────────────────────────\x1b[0m`);
         console.log(`  \x1b[37mRun\x1b[0m            → Chạy toàn bộ bot đã chọn`);
         console.log(`  \x1b[37mAcc <tên/số>\x1b[0m   → Thêm / xóa bot khỏi danh sách treo`);
+        console.log(`  \x1b[37mBulk\x1b[0m           → Thêm hàng loạt tài khoản`);
         console.log(`  \x1b[37mCopy\x1b[0m           → Sao chép tài khoản đang chọn`);
         console.log(`  \x1b[37mCopy all\x1b[0m       → Sao chép tất cả tài khoản`);
         console.log(`  \x1b[37mCopy webhook\x1b[0m   → Sao chép link Webhook`);
@@ -162,9 +262,10 @@ function Render() {
 
         console.log(`\n\x1b[90m───────────────────────────────────────────────────────\x1b[0m`);
         console.log(`  \x1b[37mAdd <user> <pass>\x1b[0m     → Thêm tài khoản`);
+        console.log(`  \x1b[37mBulk\x1b[0m                  → Thêm hàng loạt tài khoản`);
         console.log(`  \x1b[37mDel <user/số>\x1b[0m         → Xóa tài khoản`);
+        console.log(`  \x1b[37mProxy <user> <proxy>\x1b[0m  → Gán proxy (nhiều định dạng)`);
         console.log(`  \x1b[37mProxy <user> ON/OFF\x1b[0m   → Bật/tắt proxy`);
-        console.log(`  \x1b[37mProxy <user> IP:PORT\x1b[0m  → Gán proxy`);
         console.log(`  \x1b[37mWebhook <url>\x1b[0m         → Thêm Discord webhook`);
         console.log(`  \x1b[37mHome\x1b[0m                  → Quay lại menu chính`);
     }
@@ -174,11 +275,13 @@ function Render() {
         console.log(`  Run`);
         console.log(`  Acc <username/index>`);
         console.log(`  Add <username> <password>`);
+        console.log(`  Bulk`);
         console.log(`  Del <username/index>`);
-        console.log(`  Proxy <username/index> ON`);
-        console.log(`  Proxy <username/index> OFF`);
         console.log(`  Proxy <username/index> <IP:PORT>`);
         console.log(`  Proxy <username/index> <IP> <PORT>`);
+        console.log(`  Proxy <username/index> user:pass@IP:PORT`);
+        console.log(`  Proxy <username/index> ON`);
+        console.log(`  Proxy <username/index> OFF`);
         console.log(`  Webhook <url>`);
         console.log(`  Copy`);
         console.log(`  Copy all`);
@@ -218,9 +321,7 @@ async function sendDiscordWebhook(username, title, description, color = 16711680
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-    } catch (err) {
-        // silent
-    }
+    } catch (err) {}
 }
 
 function maskIp(ip) {
@@ -325,12 +426,20 @@ function startBot(username, accountConfig) {
 
         botOptions.port = 25565;
         botOptions.connect = (client) => {
-            const req = http.request({
+            const reqOptions = {
                 host: proxyConfig.ip,
                 port: proxyConfig.port,
                 method: 'CONNECT',
                 path: 'sgp.kingmc.vn:25565'
-            });
+            };
+
+            // Hỗ trợ proxy có user/pass
+            if (proxyConfig.username && proxyConfig.password) {
+                const auth = Buffer.from(`${proxyConfig.username}:${proxyConfig.password}`).toString('base64');
+                reqOptions.headers = { 'Proxy-Authorization': `Basic ${auth}` };
+            }
+
+            const req = http.request(reqOptions);
 
             req.on('connect', (res, socket, head) => {
                 socket.on('error', (err) => logErr(`Lỗi Socket Proxy: ${err.message}`));
@@ -578,6 +687,9 @@ async function handleCommand(input) {
     } else if (command === 'help') {
         CurrentTab = 'Help';
     }
+    else if (command === 'bulk') {
+        await handleBulkAdd();
+    }
     else if (command === 'add') {
         if (!args[1] || !args[2]) {
             lastError = "Cú pháp: Add <username> <pass>";
@@ -637,37 +749,36 @@ async function handleCommand(input) {
     }
     else if (command === 'proxy') {
         if (!args[1] || !args[2]) {
-            lastError = "Cú pháp: Proxy <user> ON/OFF/IP:PORT";
+            lastError = "Cú pháp: Proxy <user> <ON/OFF/IP:PORT/user:pass@IP:PORT>";
         } else {
             const username = resolveUsername(args[1]);
             if (!config.Accounts[username]) {
                 lastError = `Không tìm thấy tài khoản '${args[1]}'`;
             } else {
                 const action = args[2].toUpperCase();
+
                 if (action === 'ON') {
-                    config.Accounts[username].proxy.enable = true;
-                    saveConfig();
+                    if (!config.Accounts[username].proxy?.ip) {
+                        lastError = "Tài khoản này chưa có proxy để bật!";
+                    } else {
+                        config.Accounts[username].proxy.enable = true;
+                        saveConfig();
+                    }
                 } else if (action === 'OFF') {
                     config.Accounts[username].proxy.enable = false;
                     saveConfig();
                 } else {
-                    let ip, port;
-                    if (args[2].includes(':')) {
-                        [ip, port] = args[2].split(':');
-                    } else if (args[3]) {
-                        ip = args[2];
-                        port = args[3];
-                    }
+                    // Ghép lại phần còn lại của proxy (hỗ trợ paste)
+                    const proxyStr = args.slice(2).join(' ');
+                    const parsed = parseProxyInput(proxyStr);
 
-                    if (ip && port) {
-                        config.Accounts[username].proxy = {
-                            enable: true,
-                            ip: ip,
-                            port: parseInt(port)
-                        };
+                    if (parsed) {
+                        config.Accounts[username].proxy = parsed;
                         saveConfig();
+                        console.log(`\n\x1b[37m✔ Đã gán proxy ${parsed.ip}:${parsed.port} cho ${username}\x1b[0m`);
+                        await new Promise(r => setTimeout(r, 1000));
                     } else {
-                        lastError = "Định dạng IP:PORT hoặc IP PORT không hợp lệ!";
+                        lastError = "Định dạng proxy không hợp lệ! Hỗ trợ: IP:PORT | IP PORT | user:pass@IP:PORT";
                     }
                 }
             }
