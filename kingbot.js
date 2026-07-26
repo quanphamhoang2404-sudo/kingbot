@@ -82,12 +82,10 @@ function resolveText(raw) {
     return text.replace(/§[0-9a-fk-or]/gi, '').trim();
 }
 
-// ==================== PROXY PARSER MẠNH ====================
 function parseProxyInput(input) {
     if (!input) return null;
     input = input.trim().replace(/^https?:\/\//i, '');
 
-    // user:pass@ip:port
     let match = input.match(/^([^:@\s]+):([^@\s]+)@([\d.]+):(\d+)$/);
     if (match) {
         return {
@@ -99,7 +97,6 @@ function parseProxyInput(input) {
         };
     }
 
-    // ip:port:user:pass
     match = input.match(/^([\d.]+):(\d+):([^:]+):(.+)$/);
     if (match) {
         return {
@@ -111,7 +108,6 @@ function parseProxyInput(input) {
         };
     }
 
-    // ip:port
     match = input.match(/^([\d.]+):(\d+)$/);
     if (match) {
         return {
@@ -121,7 +117,6 @@ function parseProxyInput(input) {
         };
     }
 
-    // ip port
     match = input.match(/^([\d.]+)\s+(\d+)$/);
     if (match) {
         return {
@@ -131,7 +126,6 @@ function parseProxyInput(input) {
         };
     }
 
-    // ip port user pass
     match = input.match(/^([\d.]+)\s+(\d+)\s+(\S+)\s+(.+)$/);
     if (match) {
         return {
@@ -146,7 +140,6 @@ function parseProxyInput(input) {
     return null;
 }
 
-// ==================== BULK ADD ====================
 function parseBulkAccountLine(line) {
     line = line.trim();
     if (!line || line.toLowerCase() === 'done') return null;
@@ -329,7 +322,6 @@ function maskIp(ip) {
     return ip;
 }
 
-// ==================== ANTI-AFK ENGINE ====================
 function startAntiAFK(bot, username) {
     const log = (...args) => console.log(`[\x1b[37m${username}\x1b[0m]:`, ...args);
     const random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -392,7 +384,6 @@ function startAntiAFK(bot, username) {
     }, 8000);
 }
 
-// ==================== BOT CORE ====================
 function startBot(username, accountConfig) {
     let isverified = false;
     let inkingsmp = false;
@@ -548,7 +539,6 @@ function startBot(username, accountConfig) {
         }
     }
 
-    // ===== HỆ THỐNG ĐĂNG NHẬP TỰ ĐỘNG =====
     bot.once('login', () => {
         if (hasEnded) return;
         log('Đã kết nối, đang chờ server yêu cầu đăng nhập...');
@@ -644,7 +634,7 @@ function startBot(username, accountConfig) {
 
         if (config.Chat) log(`[CHAT]: ${jsonMsg.toString()}`);
 
-        // ===== HỆ THỐNG ĐĂNG NHẬP TỰ ĐỘNG =====
+        // Hệ thống đăng nhập tự động
         if (
             plainText.includes('ký với lệnh') ||
             plainText.includes('hãy đăng kí') ||
@@ -679,7 +669,6 @@ function startBot(username, accountConfig) {
             log('\x1b[36m✔ Đăng nhập thành công!\x1b[0m');
         }
 
-        // ===== CÁC XỬ LÝ KHÁC =====
         if (plainText.includes('giây rồi mới mở menu')) {
             log("⚠️ Bị limit mở menu. Chờ 5s...");
             if (retryMenuTimer) clearTimeout(retryMenuTimer);
@@ -710,7 +699,6 @@ function startBot(username, accountConfig) {
     });
 }
 
-// ==================== COMMAND HANDLER ====================
 async function handleCommand(input) {
     const args = input.trim().split(" ").filter(Boolean);
     if (args.length === 0) return null;
