@@ -8,7 +8,6 @@ const mineflayer = require('mineflayer');
 const http = require('http');
 const readline = require("readline");
 const fs = require('fs');
-const { exec } = require('child_process');
 
 process.on('uncaughtException', (err) => {
     if (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT' || err.message.includes('ECONNRESET')) return;
@@ -84,16 +83,6 @@ function resolveText(raw) {
     if (!text && typeof obj === 'object') text = JSON.stringify(obj);
     else if (!text) text = String(obj);
     return text.replace(/§[0-9a-fk-or]/gi, '').trim();
-}
-
-function copyToClipboard(text) {
-    return new Promise((resolve, reject) => {
-        const child = exec('clip');
-        child.stdin.write(text);
-        child.stdin.end();
-        child.on('exit', () => resolve());
-        child.on('error', reject);
-    });
 }
 
 // ==================== PROXY PARSER THÔNG MINH ====================
@@ -205,7 +194,7 @@ function render_logo() {
     ██║  ██║██║     ██║  ██╗    ██║     ██║  ██║╚██████╔╝
     ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝    ╚═╝     ╚═╝  ╚═╝ ╚═════╝ \x1b[0m
 \x1b[94m              Multi Account AFK System\x1b[0m
-\x1b[90m                 created by @dkhanh\x1b[0m
+\x1b[90m                 created by @qU4n\x1b[0m
 \x1b[37m═══════════════════════════════════════════════════════\x1b[0m
 `);
 }
@@ -241,10 +230,6 @@ function Render() {
         console.log(`  \x1b[37mRun\x1b[0m            → Chạy toàn bộ bot đã chọn`);
         console.log(`  \x1b[37mAcc <tên/số>\x1b[0m   → Thêm / xóa bot khỏi danh sách treo`);
         console.log(`  \x1b[37mBulk\x1b[0m           → Thêm hàng loạt tài khoản`);
-        console.log(`  \x1b[37mCopy\x1b[0m           → Sao chép tài khoản đang chọn`);
-        console.log(`  \x1b[37mCopy all\x1b[0m       → Sao chép tất cả tài khoản`);
-        console.log(`  \x1b[37mCopy webhook\x1b[0m   → Sao chép link Webhook`);
-        console.log(`  \x1b[37mCopy install\x1b[0m   → Sao chép lệnh cài đặt`);
         console.log(`  \x1b[37mSetting\x1b[0m        → Quản lý tài khoản & proxy`);
         console.log(`  \x1b[37mHelp\x1b[0m           → Xem hướng dẫn đầy đủ`);
         console.log(`  \x1b[37mExit\x1b[0m           → Thoát chương trình`);
@@ -283,10 +268,6 @@ function Render() {
         console.log(`  Proxy <username/index> ON`);
         console.log(`  Proxy <username/index> OFF`);
         console.log(`  Webhook <url>`);
-        console.log(`  Copy`);
-        console.log(`  Copy all`);
-        console.log(`  Copy webhook`);
-        console.log(`  Copy install`);
         console.log(`  Setting`);
         console.log(`  Home`);
         console.log(`  Exit`);
@@ -433,7 +414,6 @@ function startBot(username, accountConfig) {
                 path: 'sgp.kingmc.vn:25565'
             };
 
-            // Hỗ trợ proxy có user/pass
             if (proxyConfig.username && proxyConfig.password) {
                 const auth = Buffer.from(`${proxyConfig.username}:${proxyConfig.password}`).toString('base64');
                 reqOptions.headers = { 'Proxy-Authorization': `Basic ${auth}` };
@@ -768,7 +748,6 @@ async function handleCommand(input) {
                     config.Accounts[username].proxy.enable = false;
                     saveConfig();
                 } else {
-                    // Ghép lại phần còn lại của proxy (hỗ trợ paste)
                     const proxyStr = args.slice(2).join(' ');
                     const parsed = parseProxyInput(proxyStr);
 
@@ -781,44 +760,6 @@ async function handleCommand(input) {
                         lastError = "Định dạng proxy không hợp lệ! Hỗ trợ: IP:PORT | IP PORT | user:pass@IP:PORT";
                     }
                 }
-            }
-        }
-    }
-    else if (command === 'copy') {
-        const type = (args[1] || '').toLowerCase();
-
-        if (type === 'all') {
-            const list = Object.keys(config.Accounts);
-            if (list.length === 0) {
-                lastError = "Chưa có tài khoản nào để copy!";
-            } else {
-                await copyToClipboard(list.join('\n'));
-                console.log(`\n\x1b[37m✔ Đã copy ${list.length} tài khoản vào clipboard!\x1b[0m`);
-                await new Promise(r => setTimeout(r, 1300));
-            }
-        }
-        else if (type === 'webhook') {
-            if (!config.App.Webhook) {
-                lastError = "Chưa có Webhook để copy!";
-            } else {
-                await copyToClipboard(config.App.Webhook);
-                console.log(`\n\x1b[37m✔ Đã copy Webhook vào clipboard!\x1b[0m`);
-                await new Promise(r => setTimeout(r, 1300));
-            }
-        }
-        else if (type === 'install') {
-            const installCmd = `curl -o install.bat https://raw.githubusercontent.com/quanphamhoang2404-sudo/kingbot/refs/heads/main/install.bat && install.bat`;
-            await copyToClipboard(installCmd);
-            console.log(`\n\x1b[37m✔ Đã copy lệnh cài đặt vào clipboard!\x1b[0m`);
-            await new Promise(r => setTimeout(r, 1300));
-        }
-        else {
-            if (selectedAccounts.length === 0) {
-                lastError = "Chưa chọn tài khoản nào để copy! Dùng lệnh Acc trước.";
-            } else {
-                await copyToClipboard(selectedAccounts.join('\n'));
-                console.log(`\n\x1b[37m✔ Đã copy ${selectedAccounts.length} tài khoản đang chọn vào clipboard!\x1b[0m`);
-                await new Promise(r => setTimeout(r, 1300));
             }
         }
     }
